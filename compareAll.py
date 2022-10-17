@@ -28,8 +28,12 @@ def CompareAllFrame(base, compare, baseStart, baseEnd, compareStart, compareEnd,
     
     baseData = np.loadtxt(base, delimiter = ',')
     compareData = np.loadtxt(compare, delimiter = ',')
-    TotalFrameLink = np.empty((0,2), float)
+    TotalFrameLink = np.empty((0,3), float)
     previousValue = 0
+    if baseEnd == -1:
+        baseEnd = baseData.shape[0]
+    if compareEnd == -1:
+        compareEnd = compareData.shape[0]
     if cosine:
         for i in range(baseStart, baseEnd):
             vector_list = []
@@ -73,7 +77,7 @@ def CompareAllFrame(base, compare, baseStart, baseEnd, compareStart, compareEnd,
                 
             if previousValue <= maxFrame and len(goodScoreList) > 0:
                 previousValue = maxFrame
-                TotalFrameLink = np.append(TotalFrameLink, np.array([[i, maxFrame]]), axis=0) 
+                TotalFrameLink = np.append(TotalFrameLink, np.array([[i, maxFrame, maxScore]]), axis=0) 
             elif len(goodScoreList) > 0:
                 tmpValue = previousValue
                 minValue = 0
@@ -83,7 +87,7 @@ def CompareAllFrame(base, compare, baseStart, baseEnd, compareStart, compareEnd,
                         tmpValue = goodScoreList[j][0]
                 previousValue = tmpValue
                 if minValue != 0:
-                    TotalFrameLink = np.append(TotalFrameLink, np.array([[i, tmpValue]]), axis=0) 
+                    TotalFrameLink = np.append(TotalFrameLink, np.array([[i, tmpValue, minValue]]), axis=0) 
 
             if len(goodScoreList) > 1:
                 print("Frame " , i , "\n" , goodScoreList)
@@ -119,7 +123,7 @@ def CompareAllFrame(base, compare, baseStart, baseEnd, compareStart, compareEnd,
                     goodScoreList = np.append(goodScoreList, np.array([[j, round(summationResult, 3)]]), axis=0)
             if previousValue <= maxFrame and len(goodScoreList) > 0:
                 previousValue = maxFrame
-                TotalFrameLink = np.append(TotalFrameLink, np.array([[i, maxFrame]]), axis=0) 
+                TotalFrameLink = np.append(TotalFrameLink, np.array([[i, maxFrame, maxScore]]), axis=0) 
             elif len(goodScoreList) > 0:
                 tmpValue = previousValue
                 minValue = 100
@@ -129,16 +133,24 @@ def CompareAllFrame(base, compare, baseStart, baseEnd, compareStart, compareEnd,
                         tmpValue = goodScoreList[j][0]
                 previousValue = tmpValue
                 if minValue != 100:
-                    TotalFrameLink = np.append(TotalFrameLink, np.array([[i, tmpValue]]), axis=0) 
+                    TotalFrameLink = np.append(TotalFrameLink, np.array([[i, tmpValue, minValue]]), axis=0) 
 
             if len(goodScoreList) > 0:
                 print("Frame " , i , " : \n" , goodScoreList)
 
     print(TotalFrameLink)
-    makeCompare(baseData, TotalFrameLink, 'baseSimilarity.mp4', 60)
-    makeCompare(compareData, TotalFrameLink, 'Similarity.mp4', 60, 1)
-    print(baseData.shape[0])
-    print(compareData.shape[0])
+
+    makeCompare(baseData, TotalFrameLink, 'output/baseSimilarity.mp4', 60)
+    makeCompare(compareData, TotalFrameLink, 'output/Similarity.mp4', 60, 1)
+
+    f = open('output/FrameLink.csv', 'w', newline='')
+    wr = csv.writer(f)
+    for temp in TotalFrameLink:
+        wr.writerow([temp[0], temp[1], temp[2]])
+
+    f.close()
+
+
         
 
 def makeCompare(baseData, frameLink, filename, frame, isBase=0):
@@ -147,6 +159,7 @@ def makeCompare(baseData, frameLink, filename, frame, isBase=0):
     
     for i in range(len(frameLink)):
         base_kptwindow= np.zeros((256, 256, 3), np.uint8)
+        print(int(frameLink[i][isBase]))
         baseNp = getKpt(num_kpt, baseData, int(frameLink[i][isBase]))
 
         xMin, yMin = getDataMin(num_kpt, baseNp)
@@ -161,28 +174,70 @@ def makeCompare(baseData, frameLink, filename, frame, isBase=0):
 
         # 선 그리기
         drawLines(base_keypoints, base_kptwindow, keyIndex.mpiiPairs)
-
         out.write(base_kptwindow)
+
     out.release()
+
+def playCompared():
+    LinkData = np.loadtxt('output/FrameLink.csv', delimiter = ',')
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    
+    baseCap = cv2.VideoCapture('input/videos/test1333.mp4')
+    compareCap = cv2.VideoCapture('input/videos/compareGolf.mp4')
+    ret, image = baseCap.read()
+    baseOut = cv2.VideoWriter('output/BaseOut.mp4', fourcc, 60.0, (image.shape[1], image.shape[0]))
+    ret, image = compareCap.read()
+    compareOut = cv2.VideoWriter('output/CompareOut.mp4', fourcc, 60.0, (image.shape[1], image.shape[0]))
+
+    i = 0
+    LinkT = LinkData.T
+    baseFrames = LinkT[0]
+
+    while(baseCap.isOpened()):
+        
+        ret, frame = baseCap.read()
+        temp = np.where(baseFrames == i)
+
+        if ret:
+            if len(temp[0])>0:
+                baseOut.write(frame)
+        else:
+            break
+        i = i + 1
+
+    i = 0
+    compareFrames = LinkT[1]
+    while(compareCap.isOpened()):
+        ret, frame = compareCap.read()
+        temp = np.where(compareFrames == i)
+        if ret:
+            if(len(temp[0])>0):
+                for j in range(len(temp[0])):
+                    compareOut.write(frame)
+        else:
+            break
+        i = i + 1
+
+    baseCap.release()
+    compareCap.release()
+    cv2.destroyAllWindows()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='''Compare keypoint position distance with demo csv log file''')
     parser.add_argument('--base', type=str, required=True, help='Base File(Ground Truth) to standard')
     parser.add_argument('--compare', type=str, required=True, help='Compare file with base')
-    parser.add_argument('--start', type=int, required=True, help='Set start frame')
-    parser.add_argument('--end', type=int, required=True, help='Set end frame')
-    parser.add_argument('--baserate', type=int, default=30, help='Framerate of base video')
-    parser.add_argument('--comparerate', type=int, default=30, help='Framerate of compare video')
+    parser.add_argument('--start', type=int, default=0, help='Set start frame')
+    parser.add_argument('--end', type=int, default=-1, help='Set end frame')
     parser.add_argument('--threshold', type=float, default=0.8, help='if you using compare all frame, set threshold. default = 0.8')
     parser.add_argument('--cosine', action='store_true', help='Use cosine similarity, Default = weight distance')
-    parser.add_argument('--compareframe', type=int, default=0, help='start of compare video')
-    parser.add_argument('--compareend', type=int, default=100, help='end of compare video')
+    parser.add_argument('--comparestart', type=int, default=0, help='start of compare video')
+    parser.add_argument('--compareend', type=int, default=-1, help='end of compare video')
     
     
     args = parser.parse_args()
 
-    CompareAllFrame(args.base, args.compare, args.start, args.end, args.compareframe, args.compareend, args.threshold, keyIndex.mpiiPairs, args.cosine)
-
+    # CompareAllFrame(args.base, args.compare, args.start, args.end, args.comparestart, args.compareend, args.threshold, keyIndex.mpiiPairs, args.cosine)
+    playCompared()
 
     

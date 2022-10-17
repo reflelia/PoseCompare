@@ -145,8 +145,8 @@ def main(base, compare, start, end, baseFrame, compareFrame, cosine):
         frame_array2.append(FrameCompare)
     
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter('base.mp4',fourcc, 30.0, (256,256))
-    out2 = cv2.VideoWriter('compare.mp4', fourcc, 30.0, (256,256))
+    out = cv2.VideoWriter('output/base.mp4',fourcc, 30.0, (256,256))
+    out2 = cv2.VideoWriter('output/compare.mp4', fourcc, 30.0, (256,256))
 
     for i in range(len(frame_array)):
         out.write(frame_array[i])
