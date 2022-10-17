@@ -3,6 +3,7 @@
 ## How to use
 
 ### 1. compareVideo.py
+#### Comparing each frame while playing the video
 
 ```
 python compareVideo.py --base inputs/example.csv --compare inputs/example3.csv --start 0 --end 100 
@@ -20,18 +21,19 @@ python compareVideo.py --base inputs/example.csv --compare inputs/example3.csv -
 ```
 
 ### 2. compareAll.py
+#### Comparing all frames in two videos
 ```
 python compareAll.py --base inputs/example.csv --compare inputs/example3.csv --threshold 30
 ```
 
 If you want to decide the range
 ```
-python compareAll.py --base inputs/example.csv --compare inputs/example3.csv --threshold 30 --start 0 --end 0 --comparestart 0 --compareend 0
+python compareAll.py --base inputs/example.csv --compare inputs/example3.csv --threshold 30 --start 0 --end 100 --comparestart 0 --compareend 100
 ```
 
 If you want to use Cosine similarity,
 ```
-python compareAll.py --base inputs/example.csv --compare inputs/example3.csv --threshold 0.9 --start 0 --end 0 --comparestart 0 --compareend 0 --cosine
+python compareAll.py --base inputs/example.csv --compare inputs/example3.csv --threshold 0.9 --start 0 --end 100 --comparestart 0 --compareend 100 --cosine
 ```
 
 ### 3.If you want to create an original video with FrameLink.csv extracted from CompareAll.py
